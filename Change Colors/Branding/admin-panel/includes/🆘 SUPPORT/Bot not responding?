@@ -1,0 +1,9 @@
+# Check if running
+ps aux | grep bot.py
+
+# Check token
+cat telegram-bot/.env | grep BOT_TOKEN
+
+# Restart
+pkill -f bot.py
+python telegram-bot/bot.py
