@@ -1,0 +1,15 @@
+# 1. Setup environment
+cp telegram-bot/.env.example telegram-bot/.env
+cp admin-panel/config/.env.example admin-panel/config/.env
+
+# 2. Install Python dependencies
+cd telegram-bot
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Setup database
+mysql -u root -p < shared-database/schema.sql
+
+# 4. Start services
+./start_all.sh
