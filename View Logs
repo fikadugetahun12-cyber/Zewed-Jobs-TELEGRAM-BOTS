@@ -1,0 +1,2 @@
+tail -f telegram-bot/bot.log
+tail -f admin-panel/logs/errors.log
