@@ -1,0 +1,6 @@
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=yourpassword
+DB_NAME=zewedjobs_admin
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=hashed_password
