@@ -1,0 +1,11 @@
+# Clone and setup
+git clone https://github.com/yourusername/zewedjobs-complete.git
+cd zewedjobs-complete
+bash RUN_ME_FIRST.sh
+
+# Edit configuration
+nano telegram-bot/.env
+# Add your BOT_TOKEN and ADMIN_IDS
+
+# Start everything
+./RUN_ME_FIRST.sh
