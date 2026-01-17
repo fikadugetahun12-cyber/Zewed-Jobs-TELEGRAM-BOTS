@@ -1,0 +1,4 @@
+# 1. Upload files via web interface
+# 2. Set up MySQL database
+# 3. Configure environment variables
+# 4. Start bot as scheduled task
