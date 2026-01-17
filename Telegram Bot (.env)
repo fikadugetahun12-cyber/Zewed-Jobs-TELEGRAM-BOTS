@@ -1,0 +1,6 @@
+BOT_TOKEN=your_telegram_bot_token
+ADMIN_IDS=123456789
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=yourpassword
+DB_NAME=zewedjobs_admin
