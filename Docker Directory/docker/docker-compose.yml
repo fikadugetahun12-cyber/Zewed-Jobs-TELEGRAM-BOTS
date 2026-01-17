@@ -1,0 +1,208 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: zewedjobs-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: zewedjobs_admin
+      MYSQL_USER: zewedjobs_user
+      MYSQL_PASSWORD: ${DB_PASSWORD:-zewedjobs_password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backups:/backups
+    ports:
+      - "3306:3306"
+    networks:
+      - zewedjobs-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # PHP Admin Panel
+  admin-panel:
+    build:
+      context: ../admin-panel
+      dockerfile: Dockerfile
+    container_name: zewedjobs-admin
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_NAME: zewedjobs_admin
+      DB_USER: zewedjobs_user
+      DB_PASS: ${DB_PASSWORD:-zewedjobs_password}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    volumes:
+      - ../admin-panel:/var/www/html
+      - admin_logs:/var/log/apache2
+    ports:
+      - "8080:80"
+    networks:
+      - zewedjobs-network
+
+  # Telegram Bot
+  telegram-bot:
+    build:
+      context: ../telegram-bot
+      dockerfile: Dockerfile
+    container_name: zewedjobs-bot
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:-your_bot_token}
+      ADMIN_IDS: ${ADMIN_IDS:-123456789}
+      DB_HOST: mysql
+      DB_NAME: zewedjobs_admin
+      DB_USER: zewedjobs_user
+      DB_PASS: ${DB_PASSWORD:-zewedjobs_password}
+      SECRET_KEY: ${SECRET_KEY:-your_secret_key}
+    volumes:
+      - ../telegram-bot:/app
+      - bot_logs:/app/logs
+    networks:
+      - zewedjobs-network
+
+  # Web Dashboard (Flask)
+  web-dashboard:
+    build:
+      context: ../telegram-bot
+      dockerfile: Dockerfile.web
+    container_name: zewedjobs-dashboard
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_NAME: zewedjobs_admin
+      DB_USER: zewedjobs_user
+      DB_PASS: ${DB_PASSWORD:-zewedjobs_password}
+      SECRET_KEY: ${SECRET_KEY:-your_secret_key}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    volumes:
+      - ../telegram-bot:/app
+      - dashboard_logs:/app/logs
+    ports:
+      - "5000:5000"
+    networks:
+      - zewedjobs-network
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: zewedjobs-nginx
+    restart: always
+    depends_on:
+      - admin-panel
+      - web-dashboard
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - zewedjobs-network
+
+  # Redis Cache (Optional)
+  redis:
+    image: redis:alpine
+    container_name: zewedjobs-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - zewedjobs-network
+
+  # phpMyAdmin (Optional - for database management)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: zewedjobs-phpmyadmin
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+    ports:
+      - "8081:80"
+    networks:
+      - zewedjobs-network
+
+  # Backup Service
+  backup:
+    image: alpine
+    container_name: zewedjobs-backup
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    volumes:
+      - ../scripts:/scripts
+      - ../shared-database/backups:/backups
+      - ../telegram-bot:/app
+    networks:
+      - zewedjobs-network
+    command: >
+      sh -c "
+      echo 'Setting up backup service...' &&
+      chmod +x /scripts/backup-database.sh &&
+      # Schedule daily backups at 2 AM
+      echo '0 2 * * * /scripts/backup-database.sh' > /etc/crontabs/root &&
+      crond -f
+      "
+
+  # Health Monitoring
+  monitor:
+    image: alpine
+    container_name: zewedjobs-monitor
+    restart: unless-stopped
+    volumes:
+      - ../scripts:/scripts
+    networks:
+      - zewedjobs-network
+    command: >
+      sh -c "
+      echo 'Setting up monitoring...' &&
+      chmod +x /scripts/health-check.sh &&
+      # Schedule health checks every 5 minutes
+      echo '*/5 * * * * /scripts/health-check.sh' > /etc/crontabs/root &&
+      crond -f
+      "
+
+volumes:
+  mysql_data:
+    driver: local
+  admin_logs:
+    driver: local
+  bot_logs:
+    driver: local
+  dashboard_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  zewedjobs-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
