@@ -1,0 +1,8 @@
+# Check MySQL
+sudo systemctl status mysql
+
+# Test connection
+mysql -u root -p
+
+# Import schema
+mysql -u root -p zewedjobs_admin < shared-database/schema.sql
