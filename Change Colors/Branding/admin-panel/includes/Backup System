@@ -1,0 +1,5 @@
+# Manual backup
+bash scripts/backup-database.sh
+
+# Schedule daily backups (cron)
+0 2 * * * /path/to/scripts/backup-database.sh
