@@ -1,0 +1,6 @@
+# Start with Docker
+docker-compose up -d
+
+# Access:
+# Admin: http://localhost:8080/admin
+# Dashboard: http://localhost:5000
