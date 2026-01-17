@@ -1,1 +1,8 @@
+# Bot logs
+tail -f telegram-bot/bot.log
 
+# Admin panel logs
+tail -f admin-panel/logs/errors.log
+
+# Database logs
+tail -f /var/log/mysql/error.log
